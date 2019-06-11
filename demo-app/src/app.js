@@ -1,4 +1,4 @@
-var EVENT_ENDPOINT = 'https://dev-stats.surveyanyplace.com'; // example 'https://c2a0wnrn9i.execute-api.eu-west-1.amazonaws.com/dev
+var EVENT_ENDPOINT = 'https://11jd55zhtd.execute-api.eu-west-1.amazonaws.com/dev'; // example 'https://c2a0wnrn9i.execute-api.eu-west-1.amazonaws.com/dev
 
 var sampleInputData = {
   "context": {
@@ -9,7 +9,7 @@ var sampleInputData = {
   "user": {
     "user": {
       "id": 199,
-      "username": "emery@surveyanyplace.com",
+      "username": "emery@example.com",
       "first_name": "Emery",
       "last_name": "Walraet",
       "live_url": null,
@@ -360,21 +360,6 @@ $(function() {
     sampleInputData.event = event.target.id;
 
     statsLogger.track(event.target.id, metaData, function(data, status) {});
-    statsLogger.getContentRecommendation(sampleInputData, function(err, articles) {
-      console.log(articles);
-
-      if (!articles || !articles.length) {
-        $('#tip').html("");
-        return;
-      }
-
-      var articleHTML = '';
-      articles.forEach(article => {
-        articleHTML += '<h3>' + article.title + '</h3>' + '<div>' + article.content + '</div>';
-      });
-
-      $('#tip').html(articleHTML);
-    });
 
   });
 

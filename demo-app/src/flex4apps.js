@@ -49,25 +49,9 @@ Flex4Apps.prototype.track = function(event, metaData, cb) {
   };
   $.ajax({
     type: 'POST',
-    url: this.endPoint + '/stats/event',
+    url: this.endPoint + '/event',
     contentType: 'application/json; charset=utf-8',
-    headers: { 'ignoreLoadingBar': true },
     dataType: 'json',
     data: JSON.stringify(postData),
     success: function(data, status){cb (data, status)}});
-}
-Flex4Apps.prototype.getContentRecommendation = function(eventData, callback){
-  $.ajax({
-        type: 'POST',
-        url: this.endPoint + '/content/recommendation',
-        contentType: 'application/json; charset=utf-8',
-        dataType: 'json',
-        data: JSON.stringify(eventData),
-        headers: { 'ignoreLoadingBar': true },
-        datatype: 'json',
-        success: function(data) {
-          console.log(data);
-          callback(null, data);
-        }
-      });
 }

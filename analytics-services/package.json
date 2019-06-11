@@ -4,13 +4,16 @@
   "description": "Some lambda functions to demonstrate how to build a real time user profile from a kinesis stream and forwarding to a kinesis firehose",
   "main": "sa-analytics.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "deploy": "serverless deploy -v",
+    "sls": "serverless",
+    "sls-version": "serverless --version"
   },
   "author": "nick.boucart@sirris.be",
   "license": "MIT",
   "dependencies": {
-    "moment": "^2.22.2",
     "babel-runtime": "^6.26.0",
+    "moment": "^2.22.2",
     "source-map-support": "^0.4.18"
   },
   "devDependencies": {
@@ -20,10 +23,11 @@
     "babel-plugin-transform-runtime": "^6.23.0",
     "babel-preset-env": "^1.7.0",
     "babel-preset-stage-3": "^6.24.1",
+    "serverless": "^1.44.1",
+    "serverless-domain-manager": "^1.1.14",
     "serverless-pseudo-parameters": "^2.2.0",
     "serverless-webpack": "^5.1.0",
     "webpack": "^4.16.2",
-    "webpack-node-externals": "^1.6.0",
-    "serverless-domain-manager": "^1.1.14"
+    "webpack-node-externals": "^1.6.0"
   }
 }

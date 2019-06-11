@@ -24,6 +24,6 @@ PUT search-sa-demo-app-2bcs4z2kzi5b5s7i3dob263h6e.eu-west-1.es.amazonaws.com/_te
 
 Deleting indices
 ```bash
-DELETE /twitter
+DELETE /my_index
 
 ```

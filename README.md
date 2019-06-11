@@ -10,12 +10,17 @@ Components:
 - Cloudwatch log group: (firehose_logs) 
 - Cloudwatch log stream: (firehose_s3_log_stream, firehose_es_log_stream)
 - Kinesis firehose delivery stream: (analytics-[environment]-firehose-delivery)
-- Gateway custom domain name and SSL certificate
 - Elasticsearch IAM Policy
 - Elasticsearch IAM user and key
 - Firehose IAM Policy and role
 
-This entire stack is deployable through a single sls deploy command. Or use npm run deploy.
+This entire stack is deployable through a single sls deploy command.
+
+```bash
+#to deploy
+cd analytics-services
+yarn deploy
+```
 
 
 Components: 
@@ -48,13 +53,15 @@ Next, setup a AIM user on AWS that has enough rights to create and update the re
 
 Than, in the analytics-services folder, run
 ```
-npm install
+yarn install
 ```
 to install project dependancies. Note that for the analytics services, this npm install will install both the dependancies required for the services itself, as well as some dependancies that are introduced in the serverless.yml project description file.
 
 Next you can deploy the project using
 ```
-sls deploy -v --stage mystage
+yarn deploy
+# or
+yarn sls deploy -v
 ```
 This last command will setup the entire infrastructure. Under the hood, serverless uses AWS Cloudformation, a dedicated service by AWS to describe and deploy entire "stacks" of resources. AWS Cloudformation is a free service, one only incures costs for the resources that are deployed within the stack.
 The lambda functions in this folder are developed in nodejs.
@@ -62,7 +69,7 @@ The lambda functions in this folder are developed in nodejs.
 All resources that are deployed with the previous command are part of the mystage stage. One can deploy multiple environments using different stages (e.g. --stage prod for production).
 
 ```
-sls remove -v --stage mystage
+yarn remove
 ```
 will teardown the entire infrastructure.
 
@@ -74,7 +81,7 @@ Without special precaution, the API gateway end points that AWS Gateway returns 
 
  Setup your custom domain in AWS Certificate Manager, be sure to do that in the US-East-1 region (it will not work otherwise). Once that is done, you can setup your custom API Gateway domain through:
  ```
- sls create_domain --stage mystage
+ yarn sls create_domain --stage mystage
  ```
  This can take up to 40 minutes.
  If you use AWS Route 53 for your DNS, ```sls create_domain``` can update your DNS for you, you will need to edit the serverless.yml file for this. (For my demo, I'm not using Route 53)
@@ -83,10 +90,10 @@ Without special precaution, the API gateway end points that AWS Gateway returns 
 
 #### Deploy commands
 * `cd analytics-services`
-* `npm install`
-* `sls deploy -v --stage mystage`
+* `yarn install`
+* `yarn sls deploy -v --stage mystage`
 
-To remove the stack: `sls remove -v --stage mystage`
+To remove the stack: `yarn sls remove -v --stage mystage`
 
 ### demo-app
 This folder contains a small web application that can be used to send test events to the analytics stack. Be sure to edit app.js to post to the correct end point
