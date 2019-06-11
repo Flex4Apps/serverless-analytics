@@ -1,0 +1,66 @@
+service: f4a-analyitcs
+
+frameworkVersion: '>=1.1.0 <2.0.0'
+
+plugins:
+  - serverless-pseudo-parameters
+  - serverless-webpack
+
+custom:
+  webpackIncludeModules: true
+  stage: ${opt:stage, 'dev'}
+  region: ${opt:region, 'eu-west-1'}
+  appName: f4a-analytics-${self:custom.stage}
+  firehoseName: f4a-analytics-${self:custom.stage}
+  userProfileTableName: f4a-userprofile-${self:provider.stage}
+  elasticSearchDomainName: f4a-analytics-${self:custom.stage}
+
+provider:
+  name: aws
+  runtime: nodejs8.10
+  stackTags:
+    project: 'flex4apps'
+  stage: ${self:custom.stage}
+  region: ${self:custom.region}
+  profile: serverless-admin
+  iamRoleStatements:
+    - Effect: 'Allow'
+      Action:
+        - 'firehose:Put*'
+      Resource: 'arn:aws:firehose:${self:provider.region}:#{AWS::AccountId}:deliverystream/${self:custom.firehoseName}'
+
+    - Effect: 'Allow'
+      Action:
+        - dynamodb:GetItem
+        - dynamodb:PutItem
+        - dynamodb:UpdateItem
+      Resource: 'arn:aws:dynamodb:${self:provider.region}:#{AWS::AccountId}:table/${self:custom.userProfileTableName}'
+
+functions:
+  handle_incoming_event:
+    handler: handler.handle_incoming_event
+    memorySize: 128
+    timeout: 3
+    environment:
+      KINESIS_EVENT_STREAM_NAME: ${self:custom.firehoseName}
+      TABLE_NAME: ${self:custom.userProfileTableName}
+    events:
+      - http:
+          path: event
+          method: post
+          integration: lambda
+          cors:
+            origin: '*'
+            headers:
+              - Content-Type
+              - X-Amz-Date
+              - Authorization
+              - X-Api-Key
+              - X-Amz-Security-Token
+              - X-Amz-User-Agent
+              - Access-Control-Allow-Headers
+              - Access-Control-Allow-Origin
+            allowCredentials: false
+
+resources:
+  - ${file(resources/infrastructure.yml)}

@@ -1,0 +1,200 @@
+Resources:
+  UserProfileTable:
+    Type:                                           "AWS::DynamoDB::Table"
+    DeletionPolicy:                                 Delete
+    Properties:
+      AttributeDefinitions:
+        -
+          AttributeName:                            userId
+          AttributeType:                            S
+      KeySchema:
+        -
+          AttributeName:                            userId
+          KeyType:                                  HASH
+      ProvisionedThroughput:
+        ReadCapacityUnits:                          5
+        WriteCapacityUnits:                         5
+      TableName:                                    ${self:custom.userProfileTableName}
+
+  ElasticSearchUser:
+    Type:  "AWS::IAM::User"
+
+  ElasticSearchAccessKey:
+    Type: "AWS::IAM::AccessKey"
+    DependsOn: ElasticSearchUser
+    Properties:
+      UserName:
+        Ref: ElasticSearchUser
+
+  ElasticSearchCluster:
+    Type :                                          "AWS::Elasticsearch::Domain"
+    DependsOn: ElasticSearchUser
+    Properties:
+      DomainName:                                   ${self:custom.elasticSearchDomainName}
+      AdvancedOptions:
+        "indices.fielddata.cache.size":             ""
+        "rest.action.multi.allow_explicit_index":   "true"
+      ElasticsearchVersion:                         "6.5"
+      ElasticsearchClusterConfig:
+        DedicatedMasterEnabled:                     false
+        InstanceCount:                              1
+        InstanceType:                               "t2.small.elasticsearch"
+        ZoneAwarenessEnabled:                       false
+      EBSOptions:
+        EBSEnabled:                                 true
+        VolumeSize:                                 10
+        VolumeType:                                 "gp2" #general purpose ssd storage
+      AccessPolicies:
+        Version:                                    "2012-10-17"
+        Statement:
+          -
+            Effect:                                 "Allow"
+            Principal:
+              AWS:
+                Fn::GetAtt:
+                  - "ElasticSearchUser"
+                  - "Arn"
+            Action:
+              - "es:*"
+            Resource:                               arn:aws:es:${self:custom.region}:#{AWS::AccountId}:domain/${self:custom.elasticSearchDomainName}/*
+  BackupS3Bucket:
+    Type:                                           "AWS::S3::Bucket"
+    Properties:
+      BucketName:                                   ${self:custom.elasticSearchDomainName}
+
+  FirehoseToS3Role:
+    Type:                                           "AWS::IAM::Role"
+    Properties:
+      AssumeRolePolicyDocument:
+        Version:                                    "2012-10-17"
+        Statement:
+          -
+            Effect:                                 "Allow"
+            Principal:
+              Service:                              "firehose.amazonaws.com"
+            Action:                                 "sts:AssumeRole"
+            Condition:
+              StringEquals:
+                sts:ExternalId:                     "#{AWS::AccountId}"
+      Policies:
+        -
+          PolicyName:                               ${self:custom.elasticSearchDomainName}-firehosetos3-${self:custom.stage}
+          PolicyDocument:
+            Version:                                "2012-10-17"
+            Statement:
+              -
+                Effect:                             "Allow"
+                Action:
+                  - "s3:AbortMultipartUpload"
+                  - "s3:GetBucketLocation"
+                  - "s3:GetObject"
+                  - "s3:ListBucket"
+                  - "s3:ListBucketMultipartUploads"
+                  - "s3:PutObject"
+                Resource:
+                  - arn:aws:s3:::${self:custom.elasticSearchDomainName}
+                  - arn:aws:s3:::${self:custom.elasticSearchDomainName}/*
+              -
+                Effect:                             "Allow"
+                Action:
+                  - logs:putLogEvents
+                Resource:
+                  - arn:aws:logs:${self:provider.region}:#{AWS::AccountId}:log-group:${self:custom.appName}-firehose-${self:provider.stage}
+                  - arn:aws:logs:${self:provider.region}:#{AWS::AccountId}:log-group:${self:custom.appName}-firehose-${self:provider.stage}:*
+              -
+                Effect:                             "Allow"
+                Action:
+                  - "es:DescribeElasticsearchDomain"
+                  - "es:DescribeElasticsearchDomains"
+                  - "es:DescribeElasticsearchDomainConfig"
+                  - "es:ESHttpPost"
+                  - "es:ESHttpPut"
+                Resource:
+                  - arn:aws:es:${self:provider.region}:#{AWS::AccountId}:domain/${self:custom.elasticSearchDomainName}
+                  - arn:aws:es:${self:provider.region}:#{AWS::AccountId}:domain/${self:custom.elasticSearchDomainName}/*
+              -
+                Effect:                             "Allow"
+                Action:
+                  - "es:ESHttpGet"
+                Resource:
+                  - arn:aws:es:${self:provider.region}:#{AWS::AccountId}:domain/${self:custom.elasticSearchDomainName}/_all/_settings
+                  - arn:aws:es:${self:provider.region}:#{AWS::AccountId}:domain/${self:custom.elasticSearchDomainName}/_cluster/stats
+                  - arn:aws:es:${self:provider.region}:#{AWS::AccountId}:domain/${self:custom.elasticSearchDomainName}/events*/_mapping/event
+                  - arn:aws:es:${self:provider.region}:#{AWS::AccountId}:domain/${self:custom.elasticSearchDomainName}/_nodes
+                  - arn:aws:es:${self:provider.region}:#{AWS::AccountId}:domain/${self:custom.elasticSearchDomainName}/_nodes/stats
+                  - arn:aws:es:${self:provider.region}:#{AWS::AccountId}:domain/${self:custom.elasticSearchDomainName}/_nodes/*/stats
+                  - arn:aws:es:${self:provider.region}:#{AWS::AccountId}:domain/${self:custom.elasticSearchDomainName}/_stats
+                  - arn:aws:es:${self:provider.region}:#{AWS::AccountId}:domain/${self:custom.elasticSearchDomainName}/events*/_stats
+      RoleName:   ${self:custom.elasticSearchDomainName}-firehosetos3-${self:custom.stage}
+
+  FireHoseLogGroup:
+    Type: "AWS::Logs::LogGroup"
+    Properties:
+      RetentionInDays: 7
+      LogGroupName: ${self:custom.elasticSearchDomainName}
+
+  FireHoseESLogStream:
+    Type: "AWS::Logs::LogStream"
+    DependsOn: FireHoseLogGroup
+    Properties:
+      LogStreamName: "ElasticsearchDelivery"
+      LogGroupName: ${self:custom.elasticSearchDomainName}
+
+  FireHoseS3LogStream:
+    Type: "AWS::Logs::LogStream"
+    DependsOn: FireHoseLogGroup
+    Properties:
+      LogStreamName: "S3Delivery"
+      LogGroupName: ${self:custom.elasticSearchDomainName}
+
+  ElasticSearchDeliveryStream:
+    Type:                                           "AWS::KinesisFirehose::DeliveryStream"
+    Properties:
+      DeliveryStreamName:                           ${self:custom.firehoseName}
+      ElasticsearchDestinationConfiguration:
+        BufferingHints:
+          IntervalInSeconds:                        60
+          SizeInMBs:                                5
+        CloudWatchLoggingOptions:
+          Enabled:                                  true
+          LogGroupName:
+            Ref: "FireHoseLogGroup"
+          LogStreamName:
+            Ref: "FireHoseESLogStream"
+        DomainARN: !GetAtt ElasticSearchCluster.DomainArn
+        IndexName:                                  "events"
+        IndexRotationPeriod:                        "OneDay"
+        TypeName:                                   "event"
+        RoleARN: !GetAtt FirehoseToS3Role.Arn
+        RetryOptions:
+          DurationInSeconds:                        "60"
+        S3BackupMode:                               "AllDocuments"
+        S3Configuration:
+          EncryptionConfiguration:
+            NoEncryptionConfig:                     "NoEncryption"
+          BucketARN: !GetAtt BackupS3Bucket.Arn
+          BufferingHints:
+            IntervalInSeconds:                      60
+            SizeInMBs:                              5
+          CompressionFormat:                        "UNCOMPRESSED"
+          Prefix:                                   "firehose"
+          RoleARN: !GetAtt FirehoseToS3Role.Arn
+          CloudWatchLoggingOptions:
+            Enabled:                                true
+            LogGroupName: !Ref FireHoseLogGroup
+            LogStreamName: !Ref FireHoseS3LogStream
+Outputs:
+
+  ESAccessKey:
+    Description: "access key for Kibana access"
+    Value:        ElasticSearchAccessKey
+
+  ESAccessSecret:
+    Description: "secret for accessing kibana"
+    Value:
+      'Fn::GetAtt':  [ElasticSearchAccessKey, SecretAccessKey]
+
+  ElasticSearchAccessURL:
+    Description:                                    "The URL to access the ES cluster"
+    Value: 
+      'Fn::GetAtt':   [ElasticSearchCluster, DomainEndpoint]
